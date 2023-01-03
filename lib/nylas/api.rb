@@ -6,20 +6,20 @@ module Nylas
     attr_accessor :client
 
     extend Forwardable
-    def_delegators :client, :execute, :get, :post, :put, :delete, :app_id, :api_server
+    def_delegators :client, :execute, :get, :post, :put, :delete, :client_id, :api_server
 
     include Logging
 
     # @param client [HttpClient] Http Client to use for retrieving data
-    # @param app_id [String] Your application id from the Nylas Dashboard
-    # @param app_secret [String] Your application secret from the Nylas Dashboard
+    # @param client_id [String] Your application's client ID from the Nylas Dashboard
+    # @param client_secret [String] Your application's client secret from the Nylas Dashboard
     # @param access_token [String] (Optional) Your users access token.
     # @param api_server [String] (Optional) Which Nylas API Server to connect to. Only change this if
     #                            you're using a self-hosted Nylas instance.
     # @return [Nylas::API]
-    def initialize(client: nil, app_id: nil, app_secret: nil, access_token: nil,
+    def initialize(client: nil, client_id: nil, client_secret: nil, access_token: nil,
                    api_server: "https://api.nylas.com")
-      self.client = client || HttpClient.new(app_id: app_id, app_secret: app_secret,
+      self.client = client || HttpClient.new(client_id: client_id, client_secret: client_secret,
                                              access_token: access_token, api_server: api_server)
     end
 
@@ -37,7 +37,7 @@ module Nylas
 
     def authentication_url(redirect_uri:, scopes:, response_type: "code", login_hint: nil, state: nil,
                            provider: nil, redirect_on_error: nil, disable_provider_selection: nil)
-      params = { client_id: app_id, redirect_uri: redirect_uri, response_type: response_type,
+      params = { client_id: client_id, redirect_uri: redirect_uri, response_type: response_type,
                  login_hint: login_hint }
 
       params[:state] = state if state
@@ -55,8 +55,8 @@ module Nylas
     # @return [String | Hash] Returns just the access token as a string, or the full response as a hash
     def exchange_code_for_token(code, return_full_response: false)
       data = {
-        "client_id" => app_id,
-        "client_secret" => client.app_secret,
+        "client_id" => client_id,
+        "client_secret" => client.client_secret,
         "grant_type" => "authorization_code",
         "code" => code
       }
@@ -83,7 +83,7 @@ module Nylas
 
     # @return [Collection<Account>] A queryable collection of {Account}s
     def accounts
-      @accounts ||= Collection.new(model: Account, api: as(client.app_secret))
+      @accounts ||= Collection.new(model: Account, api: as(client.client_secret))
     end
 
     # @return [CalendarCollection<Calendar>] A queryable collection of {Calendar}s
@@ -156,7 +156,7 @@ module Nylas
 
     # @return [Collection<Component>] A queryable collection of {Component}s
     def components
-      @components ||= ComponentCollection.new(model: Component, api: as(client.app_secret))
+      @components ||= ComponentCollection.new(model: Component, api: as(client.client_secret))
     end
 
     # Revokes access to the Nylas API for the given access token
@@ -169,9 +169,9 @@ module Nylas
     # Returns the application details
     # @return [ApplicationDetail] The application details
     def application_details
-      response = client.as(client.app_secret).execute(
+      response = client.as(client.client_secret).execute(
         method: :get,
-        path: "/a/#{app_id}",
+        path: "/a/#{client_id}",
         auth_method: HttpClient::AuthMethod::BASIC
       )
       ApplicationDetail.new(**response)
@@ -181,9 +181,9 @@ module Nylas
     # @param application_details [ApplicationDetail] The updated application details
     # @return [ApplicationDetails] The updated application details, returned from the server
     def update_application_details(application_details)
-      response = client.as(client.app_secret).execute(
+      response = client.as(client.client_secret).execute(
         method: :put,
-        path: "/a/#{app_id}",
+        path: "/a/#{client_id}",
         payload: JSON.dump(application_details.to_h),
         auth_method: HttpClient::AuthMethod::BASIC
       )
@@ -194,8 +194,8 @@ module Nylas
     # @return [Hash]
     # hash has keys of :updated_at (unix timestamp) and :ip_addresses (array of strings)
     def ip_addresses
-      path = "/a/#{app_id}/ip_addresses"
-      client.as(client.app_secret).get(path: path, auth_method: HttpClient::AuthMethod::BASIC)
+      path = "/a/#{client_id}/ip_addresses"
+      client.as(client.client_secret).get(path: path, auth_method: HttpClient::AuthMethod::BASIC)
     end
 
     # @param message [Hash, String, #send!]
@@ -220,7 +220,7 @@ module Nylas
 
     # @return [Collection<Webhook>] A queryable collection of {Webhook}s
     def webhooks
-      @webhooks ||= Collection.new(model: Webhook, api: as(client.app_secret))
+      @webhooks ||= Collection.new(model: Webhook, api: as(client.client_secret))
     end
 
     # TODO: Move this into calendar collection
